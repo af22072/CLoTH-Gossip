@@ -4,9 +4,6 @@
 
 struct array* resize_array(struct array* a) {
   struct array* new;
-
-
-
   long i;
 
   new=malloc(sizeof(struct array));
