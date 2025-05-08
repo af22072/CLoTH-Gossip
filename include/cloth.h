@@ -7,7 +7,7 @@
 #include <gsl/gsl_randist.h>
 
 enum routing_method{
-    CLOTH_ORIGINAL, CHANNEL_UPDATE, GROUP_ROUTING, IDEAL　,CLOTH_ONE_HOP_CHANGE//調査用の方式
+    CLOTH_ORIGINAL, CHANNEL_UPDATE, GROUP_ROUTING, IDEAL, CLOTH_ONE_HOP_CHANGE//調査用の方式
 };
 
 struct network_params{

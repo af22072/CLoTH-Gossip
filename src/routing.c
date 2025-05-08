@@ -412,10 +412,23 @@ struct array* dijkstra(long source, long target, uint64_t amount, struct network
           struct path_hop* current_hop = array_get(original_hops, hop_to_change);
           struct path_hop* prev_hop = array_get(original_hops, hop_to_change - 1);
           struct path_hop* next_hop = (hop_to_change < array_len(original_hops) - 1) ? array_get(original_hops, hop_to_change + 1) : NULL;
+          // NULLチェックを追加
+          if (!current_hop || !prev_hop) {
+            return original_hops;
+          }
           //代替経路を探索
           struct node* start_node = array_get(network->nodes, prev_hop->sender);
+          // start_nodeのNULLチェックを追加
+          if (!start_node || !start_node->open_edges) {
+            return original_hops;
+          }
           for (long j=0; j < array_len(start_node->open_edges); j++) {
-              struct edge* alt_edge = array_get(network->edges, array_get(start_node->open_edges, j));
+              // エッジIDの取得を安全に行う
+              long* edge_id_ptr = array_get(start_node->open_edges, j);
+              if (!edge_id_ptr) continue;
+              struct edge* alt_edge = array_get(network->edges, *edge_id_ptr);
+              // alt_edgeのNULLチェックを追加
+              if (!alt_edge) continue;
               //元エッジを除外
               if(alt_edge->id == current_hop->edge) continue;
               // 次のホップに繋がるノードへの経路のみを考慮
