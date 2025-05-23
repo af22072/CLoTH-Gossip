@@ -200,7 +200,8 @@ struct payment* create_payment_shard(long shard_id, uint64_t shard_amount, struc
 /*HTLC FUNCTIONS*/
 
 /* find a path for a payment (a modified version of dijkstra is used: see `routing.c`) */
-void find_path(struct event *event, struct simulation* simulation, struct network* network, struct array** payments, unsigned int mpp, enum routing_method routing_method, struct network_params net_params) {
+void find_path(struct event *event, struct simulation *simulation, struct network *network, struct array **payments,
+               unsigned int mpp, enum routing_method routing_method, struct network_params net_params) {
   struct payment *payment, *shard1, *shard2;
   struct array *path, *shard1_path, *shard2_path;
   uint64_t shard1_amount, shard2_amount;
@@ -272,6 +273,145 @@ void find_path(struct event *event, struct simulation* simulation, struct networ
   }
 
   if (path != NULL) {
+      if (net_params.test_param == 1) {
+          // test param: exclude a random edge from the path
+          struct array* path_backup = array_initialize(array_len(path));
+          for (int i = 0; i < array_len(path); i++) {
+              struct route_hop* hop1 = array_get(path, i);
+              struct route_hop* hop_copy = malloc(sizeof(struct route_hop));
+              memcpy(hop_copy, hop1, sizeof(struct route_hop));
+              path_backup = array_insert(path_backup, hop_copy);
+          }
+          srand(simulation->current_time);
+          int random_index = rand() % array_len(path);
+            // exclude the edge of the random hop
+          struct route_hop *hop = array_get(path, random_index);
+          struct edge *edge = array_get(network->edges, hop->edge_id);
+          struct element *exclude_edges = NULL;
+          exclude_edges = push(exclude_edges, edge);
+
+          path = dijkstra(payment->sender, payment->receiver, payment->amount, network, simulation->current_time, 0,
+                          &error, net_params.routing_method, exclude_edges, payment->max_fee_limit);
+
+          if (path == NULL) {
+              path = array_initialize(array_len(path_backup));
+              for (int i = 0; i < array_len(path_backup); i++) {
+                  struct route_hop* hop1 = array_get(path_backup, i);
+                  struct route_hop* hop_copy = malloc(sizeof(struct route_hop));
+                  memcpy(hop_copy, hop1, sizeof(struct route_hop));
+                  path = array_insert(path, hop_copy);
+              }
+          }
+          for (int i = 0; i < array_len(path_backup); i++) {
+              free(array_get(path_backup, i));
+          }
+          array_free(path_backup);
+      }
+      if (net_params.test_param == 2) {
+          //1つのエッジを無視するパターン
+          //バックアップ用のコピー
+          struct array* path_backup = array_initialize(array_len(path));
+          for (int i = 0; i < array_len(path); i++) {
+              struct route_hop* hop1 = array_get(path, i);
+              struct route_hop* hop_copy = malloc(sizeof(struct route_hop));
+              memcpy(hop_copy, hop1, sizeof(struct route_hop));
+              path_backup = array_insert(path_backup, hop_copy);
+          }
+          //ランダムなエッジを選択
+          srand(simulation->current_time);
+          long random_index = rand() % array_len(path);
+          //代替パスが見つかるまで無視するエッジを変えながら経路探索
+          for (int i = 0; i < array_len(path_backup); i++) {
+              struct route_hop *hop = array_get(path_backup, random_index);
+              struct edge *edge = array_get(network->edges, hop->edge_id);
+              struct element *exclude_edges = NULL;
+              exclude_edges = push(exclude_edges, edge);
+
+              path = dijkstra(payment->sender, payment->receiver, payment->amount, network, simulation->current_time, 0,
+                              &error, net_params.routing_method, exclude_edges, payment->max_fee_limit);
+              //print_exclude_edges(exclude_edges);
+              if (path != NULL) break;
+              random_index++;
+              if (random_index >= array_len(path_backup)) {
+                  random_index -= array_len(path_backup);
+              }
+          }
+          //pathがNULLのままだったらバックアップから復元
+          if (path == NULL) {
+              path = array_initialize(array_len(path_backup));
+              for (int i = 0; i < array_len(path_backup); i++) {
+                  struct route_hop* hop1 = array_get(path_backup, i);
+                  struct route_hop* hop_copy = malloc(sizeof(struct route_hop));
+                  memcpy(hop_copy, hop1, sizeof(struct route_hop));
+                  path = array_insert(path, hop_copy);
+              }
+          }
+          //ジャカード係数を計算
+          if (path && path_backup) {
+              //pathとpath_backupのジャカード係数を計算
+              payment->jaccard_index = calc_jaccard_index(path, path_backup);
+          }
+          //バックアップの解放
+          for (int i = 0; i < array_len(path_backup); i++) {
+              free(array_get(path_backup, i));
+          }
+          array_free(path_backup);
+
+      }
+      if (net_params.test_param == 3 && array_len(path)>1) {
+          //1つのノードを無視するパターン.
+          //バックアップ用のコピー
+          struct array* path_backup = array_initialize(array_len(path));
+          for (int i = 0; i < array_len(path); i++) {
+              struct route_hop* hop1 = array_get(path, i);
+              struct route_hop* hop_copy = malloc(sizeof(struct route_hop));
+              memcpy(hop_copy, hop1, sizeof(struct route_hop));
+              path_backup = array_insert(path_backup, hop_copy);
+          }
+
+          srand(simulation->current_time);
+          long random_index = rand() % (array_len(path) - 1);
+          for (int i=0; i<array_len(path_backup)-1; i++) {
+              struct route_hop* hop = array_get(path_backup, random_index);
+              long selected_node_id = hop->to_node_id;
+
+              //せんたくしたノードに接続されたすべてのエッジをexclude_edgesとする
+              struct node* node = array_get(network->nodes, selected_node_id);
+              struct element *exclude_edges = NULL;
+              for (int j = 0; j < array_len(node->open_edges); j++) {
+                  struct edge* edge = array_get(node->open_edges, j);
+                  exclude_edges = push(exclude_edges, edge);
+              }
+
+              path = dijkstra(payment->sender, payment->receiver, payment->amount, network, simulation->current_time, 0,
+                                &error, net_params.routing_method, exclude_edges, payment->max_fee_limit);
+
+              if (path!=NULL) break;
+
+              random_index++;
+              if (random_index >= array_len(path_backup) - 1) {
+                  random_index -= array_len(path_backup) - 1;
+              }
+
+          }
+
+          //pathがNULLのままだったらバックアップから復元
+          if (path == NULL) {
+              path = array_initialize(array_len(path_backup));
+              for (int i = 0; i < array_len(path_backup); i++) {
+                  struct route_hop* hop1 = array_get(path_backup, i);
+                  struct route_hop* hop_copy = malloc(sizeof(struct route_hop));
+                  memcpy(hop_copy, hop1, sizeof(struct route_hop));
+                  path = array_insert(path, hop_copy);
+              }
+          }
+          //バックアップの解放
+          for (int i = 0; i < array_len(path_backup); i++) {
+              free(array_get(path_backup, i));
+          }
+          array_free(path_backup);
+      }
+      //path = dijkstra(payment->sender, payment->receiver, payment->amount, network, simulation->current_time, 0, &error, net_params.routing_method, exclude_edges, payment->max_fee_limit);
     generate_send_payment_event(payment, path, simulation, network);
     return;
   }
@@ -852,4 +992,96 @@ void channel_update_success(struct event* event, struct simulation* simulation, 
 void channel_update_fail(struct event* event, struct simulation* simulation, struct network* network){
     struct node* node = array_get(network->nodes, event->node_id);
     process_fail_result(node, event->payment, simulation->current_time);
+}
+
+void print_exclude_edges(struct element* exclude_edges) {
+    printf("exclude_edges: ");
+    for (struct element* it = exclude_edges; it != NULL; it = it->next) {
+        struct edge* e = it->data;
+        printf("%ld ", e->id);
+    }
+    printf("\n");
+}
+
+void print_path(struct array* path) {
+    printf("path: ");
+    for (int i = 0; i < array_len(path); i++) {
+        struct route_hop* hop = array_get(path, i);
+        printf("%ld ", hop->edge_id);
+    }
+    printf("\n");
+}
+
+int path_cmp(struct array* path1, struct array* path2) {    //same:0,different:1
+    if (array_len(path1) != array_len(path2)) return 1;
+    for (int i = 0; i < array_len(path1); i++) {
+        struct route_hop* hop1 = array_get(path1, i);
+        struct route_hop* hop2 = array_get(path2, i);
+        if (hop1->edge_id != hop2->edge_id) return 1;
+    }
+    return 0;
+}
+//保留
+// double culc_consistency(struct array* original_path, struct array* changed_path) {
+//     double consistency;
+//     double n = 0;
+//     double m = (double)array_len(original_path);
+//     int i_max;
+//     if (array_len(original_path)>=array_len(changed_path)) i_max = (int)array_len(changed_path);
+//     else i_max = (int)array_len(original_path);
+//     for (int i = 0; i < i_max; i++) {
+//         struct route_hop* hop1 = array_get(original_path, i);
+//         struct route_hop* hop2 = array_get(changed_path, i);
+//         if (hop1->edge_id != hop2->edge_id) n++;
+//     }
+//     consistency = (m-n)/m;
+//     return consistency;
+// }
+
+double calc_jaccard_index(struct array* original_path, struct array* changed_path) {
+    long* set1 = get_edge_ids_from_path(original_path);
+    long* set2 = get_edge_ids_from_path(changed_path);
+    long len1 = array_len(original_path);
+    long len2 = array_len(changed_path);
+
+    int intersection = 0;   //積集合のカウント
+    long union_count = len1;  // 和集合のカウントを最初のセットのサイズで初期化
+    // 積集合と和集合を同時にカウント
+    for (int i = 0; i < len2; i++) {
+        int found = 0;
+        for (int j = 0; j < len1; j++) {
+            if (set2[i] == set1[j]) {
+                intersection++;
+                found = 1;
+                break;
+            }
+        }
+        if (!found) union_count++;  // 新しい要素の場合、和集合のカウントを増やす
+    }
+
+    double similarity = union_count > 0 ? (double)intersection / union_count : 0.0;
+
+    free(set1);
+    free(set2);
+    return similarity;
+}
+
+double culc_ld_similarity(struct array* original_path, struct array* changed_path) {    //Levenshtein distance
+    double ld_similarity;
+    return ld_similarity;
+}
+
+double culc_lcs_similarity(struct array* original_path, struct array* changed_path) {   //longest common subsequence
+    double lcs_similarity;
+    return lcs_similarity;
+}
+
+long* get_edge_ids_from_path(struct array* path) {  //配列使用後はfree()
+    long size = array_len(path);
+    long* edge_ids = malloc(sizeof(long) * size);
+    for (int i = 0; i < size; i++) {
+        struct route_hop* hop = array_get(path, i);
+        edge_ids[i] = hop->edge_id;
+    }
+    return edge_ids;
 }

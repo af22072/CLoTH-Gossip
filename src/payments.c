@@ -38,6 +38,7 @@ struct payment* new_payment(long id, long sender, long receiver, uint64_t amount
   p->shards_id[0] = p->shards_id[1] = -1;
   p->history = NULL;
   p->max_fee_limit = max_fee_limit;
+  p->jaccard_index = 1.0;
   return p;
 }
 

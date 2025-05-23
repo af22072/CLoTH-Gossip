@@ -156,7 +156,7 @@ void write_output(struct network* network, struct array* payments, char output_d
     printf("ERROR cannot open payment_output.csv\n");
     exit(-1);
   }
-  fprintf(csv_payment_output, "id,sender_id,receiver_id,amount,start_time,max_fee_limit,end_time,mpp,is_success,no_balance_count,offline_node_count,timeout_exp,attempts,route,total_fee,attempts_history\n");
+  fprintf(csv_payment_output, "id,sender_id,receiver_id,amount,start_time,max_fee_limit,end_time,mpp,is_success,no_balance_count,offline_node_count,timeout_exp,attempts,route,total_fee,attempts_history,jaccard_index\n");
   for(i=0; i<array_len(payments); i++)  {
     payment = array_get(payments, i);
     if (payment->id == -1) continue;
@@ -198,6 +198,8 @@ void write_output(struct network* network, struct array* payments, char output_d
         }
         fprintf(csv_payment_output, "\"");
     }
+    //jaccard index
+    fprintf(csv_payment_output, ",%lf", payment->jaccard_index);
     fprintf(csv_payment_output, "\n");
   }
   fclose(csv_payment_output);
@@ -341,8 +343,6 @@ void read_input(struct network_params* net_params, struct payments_params* pay_p
         net_params->routing_method=GROUP_ROUTING;
       else if(strcmp(value, "ideal")==0)
         net_params->routing_method=IDEAL;
-      else if(strcmp(value, "cloth_one_hop_change")==0)
-        net_params->routing_method=CLOTH_ONE_HOP_CHANGE;//調査用の方式
       else{
         fprintf(stderr, "ERROR: wrong value of parameter <%s> in <cloth_input.txt>. Possible values are [\"cloth_original\", \"channel_update\", \"group_routing\", \"ideal\",\"cloth_one_hop_change\"]\n", parameter);
         fclose(input_file);
@@ -388,6 +388,9 @@ void read_input(struct network_params* net_params, struct payments_params* pay_p
     }
     else if(strcmp(parameter, "variance_max_fee_limit")==0){
         pay_params->max_fee_limit_sigma = strtod(value, NULL);
+    }
+    else if (strcmp(parameter, "test_params")==0) {
+      net_params->test_param = strtod(value, NULL);
     }
     else{
       fprintf(stderr, "ERROR: unknown parameter <%s>\n", parameter);

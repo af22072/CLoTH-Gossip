@@ -41,6 +41,9 @@ struct payment {
   int no_balance_count;
   unsigned int is_timeout;
   struct element* history; // list of `struct attempt`
+  double jaccard_index;
+  // double ld_similarity;
+  // double lcs_similarity;
 };
 
 struct attempt {

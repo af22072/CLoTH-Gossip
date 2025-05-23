@@ -50,4 +50,18 @@ struct element* request_group_update(struct event* event, struct simulation* sim
 // return `struct element* group_add_queue`
 struct element* construct_groups(struct simulation* simulation, struct element* group_add_queue, struct network *network, struct network_params net_params);
 
+void print_exclude_edges(struct element* exclude_edges);
+
+void print_path(struct array* path);
+
+int path_cmp(struct array* path1, struct array* path2);
+
+double calc_jaccard_index(struct array* original_path, struct array* changed_path);
+
+double culc_ld_similarity(struct array* original_path, struct array* changed_path);
+
+double culc_lcs_similarity(struct array* original_path, struct array* changed_path);
+
+long* get_edge_ids_from_path(struct array* path);
+
 #endif

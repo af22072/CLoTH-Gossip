@@ -390,65 +390,6 @@ uint64_t estimate_capacity(struct edge* edge, struct network* network, enum rout
 
 /* a modified version of dijkstra to find a path connecting the source (payment sender) to the target (payment receiver) */
 struct array* dijkstra(long source, long target, uint64_t amount, struct network* network, uint64_t current_time, long p, enum pathfind_error *error, enum routing_method routing_method, struct element* exclude_edges, uint64_t max_fee_limit) {
-  if (routing_method == CLOTH_ONE_HOP_CHANGE) {
-          //CLOTH_ORIGINALメソッドで基本となる経路を取得
-          //経路の2ホップ目以降からランダムに1つ選択
-          //選択したホップの前のノードから、次のホップのノードへの代替エッジを探索
-          //条件（容量など）を満たす代替エッジが見つかれば置き換え
-          //最終的な経路を返却
-          //まずCLOTH_ORIGINALで変換元ルートを取得
-          enum pathfind_error original_error;
-          struct array* original_hops = dijkstra(source, target, amount, network, current_time, p, &original_error, CLOTH_ORIGINAL, exclude_edges, max_fee_limit);
-          if (original_hops == NULL) {
-              *error = original_error;
-              return NULL;
-          }
-          //ホップ数1の場合変更できない(CLOTH_ORIGINALのルートをそのまま返す)
-          if(array_len(original_hops) <= 1) {
-              return original_hops;
-          }
-          //変更するホップを1爪以外からrandom選択する
-          int hop_to_change = 1 + (rand() % (array_len(original_hops) - 1));
-          struct path_hop* current_hop = array_get(original_hops, hop_to_change);
-          struct path_hop* prev_hop = array_get(original_hops, hop_to_change - 1);
-          struct path_hop* next_hop = (hop_to_change < array_len(original_hops) - 1) ? array_get(original_hops, hop_to_change + 1) : NULL;
-          // NULLチェックを追加
-          if (!current_hop || !prev_hop) {
-            return original_hops;
-          }
-          //代替経路を探索
-          struct node* start_node = array_get(network->nodes, prev_hop->sender);
-          // start_nodeのNULLチェックを追加
-          if (!start_node || !start_node->open_edges) {
-            return original_hops;
-          }
-          for (long j=0; j < array_len(start_node->open_edges); j++) {
-              // エッジIDの取得を安全に行う
-              long* edge_id_ptr = array_get(start_node->open_edges, j);
-              if (!edge_id_ptr) continue;
-              struct edge* alt_edge = array_get(network->edges, *edge_id_ptr);
-              // alt_edgeのNULLチェックを追加
-              if (!alt_edge) continue;
-              //元エッジを除外
-              if(alt_edge->id == current_hop->edge) continue;
-              // 次のホップに繋がるノードへの経路のみを考慮
-              long target_node = next_hop ? next_hop->sender : target;
-              if(alt_edge->to_node_id == target_node) {
-                  // 基本的なチェック
-                  if (alt_edge->policy.min_htlc > amount) continue;
-                  if (compute_fee(amount, alt_edge->policy) > max_fee_limit) continue;
-                  // 容量チェック
-                  uint64_t estimated_cap = estimate_capacity(alt_edge, network, CLOTH_ORIGINAL);
-                  if(estimated_cap >= amount) {
-                      // 代替エッジを設定
-                      current_hop->edge = alt_edge->id;
-                      current_hop->receiver = alt_edge->to_node_id;
-                      break;
-                  }
-              }
-          }
-          return original_hops;
-      }
 
   struct distance *d=NULL, to_node_dist;
   long i, best_node_id, j, from_node_id, curr;
@@ -520,6 +461,11 @@ struct array* dijkstra(long source, long target, uint64_t amount, struct network
             channel = array_get(network->channels, edge->channel_id);
             if(channel->capacity < amt_to_send)
               continue;
+          }
+
+          // if the edge excluded, skip
+          if(exclude_edges != NULL) {
+            if(is_in_list(exclude_edges, &(edge->id), is_equal_edge)) continue;
           }
 
           if(amt_to_send < edge->policy.min_htlc)
@@ -642,7 +588,8 @@ struct array* dijkstra(long source, long target, uint64_t amount, struct network
     *error = NOPATH;
     return NULL;
   }
-
+  //if(test_param==1){
+  //}
   return hops;
 }
 

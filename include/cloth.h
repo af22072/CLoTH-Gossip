@@ -7,7 +7,7 @@
 #include <gsl/gsl_randist.h>
 
 enum routing_method{
-    CLOTH_ORIGINAL, CHANNEL_UPDATE, GROUP_ROUTING, IDEAL, CLOTH_ONE_HOP_CHANGE//調査用の方式
+    CLOTH_ORIGINAL, CHANNEL_UPDATE, GROUP_ROUTING, IDEAL
 };
 
 struct network_params{
@@ -27,6 +27,7 @@ struct network_params{
   unsigned int group_broadcast_delay;
   int group_size;
   float group_limit_rate;
+  unsigned int test_param;  // 0: no test, 1: test v1, 2: test v2, 3:test v3
 };
 
 struct payments_params{
