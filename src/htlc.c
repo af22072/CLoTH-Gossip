@@ -329,8 +329,13 @@ void find_path(struct event *event, struct simulation *simulation, struct networ
 
               path = dijkstra(payment->sender, payment->receiver, payment->amount, network, simulation->current_time, 0,
                               &error, net_params.routing_method, exclude_edges, payment->max_fee_limit);
-              //print_exclude_edges(exclude_edges);
-              if (path != NULL) break;
+              // print_exclude_edges(exclude_edges);
+              // print_path(path_backup);
+              // (path ==NULL) ? printf("path: NULL\n.") : print_path(path);
+              if (path != NULL) {
+                  payment->is_path_changed = 1;
+                  break;
+              }
               random_index++;
               if (random_index >= array_len(path_backup)) {
                   random_index -= array_len(path_backup);
@@ -346,10 +351,13 @@ void find_path(struct event *event, struct simulation *simulation, struct networ
                   path = array_insert(path, hop_copy);
               }
           }
-          //ジャカード係数を計算
+          //ジャカード係数,LCSを計算
           if (path && path_backup) {
               //pathとpath_backupのジャカード係数を計算
               payment->jaccard_index = calc_jaccard_index(path, path_backup);
+              payment->lcs_similarity = calc_lcs_similarity(path, path_backup);
+              //printf("payment %ld jaccard_index: %f, lcs_similarity: %f\n", payment->id, payment->jaccard_index, payment->lcs_similarity);
+
           }
           //バックアップの解放
           for (int i = 0; i < array_len(path_backup); i++) {
@@ -1039,49 +1047,80 @@ int path_cmp(struct array* path1, struct array* path2) {    //same:0,different:1
 // }
 
 double calc_jaccard_index(struct array* original_path, struct array* changed_path) {
-    long* set1 = get_edge_ids_from_path(original_path);
-    long* set2 = get_edge_ids_from_path(changed_path);
     long len1 = array_len(original_path);
     long len2 = array_len(changed_path);
-
-    int intersection = 0;   //積集合のカウント
-    long union_count = len1;  // 和集合のカウントを最初のセットのサイズで初期化
-    // 積集合と和集合を同時にカウント
+    long set1[len1];
+    long set2[len2];
+    get_edge_ids_from_path(original_path, set1, len1);
+    get_edge_ids_from_path(changed_path, set2, len2);
+    int intersection = 0;   //積集合のカウント.
+    long union_count = len1;  // 和集合のカウント、最初のセットのサイズで初期化.
+    // set2の要素がset1にあるかどうか判定.
     for (int i = 0; i < len2; i++) {
-        int found = 0;
+        int found = 0;  //0:見つからない, 1:見つかった.
         for (int j = 0; j < len1; j++) {
             if (set2[i] == set1[j]) {
-                intersection++;
                 found = 1;
                 break;
             }
         }
-        if (!found) union_count++;  // 新しい要素の場合、和集合のカウントを増やす
+        found ? intersection++ : union_count++;  // すでにある要素(1)なら積集合,新しい要素(0)なら和集合のカウントを増やす
     }
 
-    double similarity = union_count > 0 ? (double)intersection / union_count : 0.0;
+    double similarity = union_count > 0 ? (double)intersection / (double) union_count : 0.0;
 
-    free(set1);
-    free(set2);
     return similarity;
 }
 
-double culc_ld_similarity(struct array* original_path, struct array* changed_path) {    //Levenshtein distance
+double calc_lcs_similarity(struct array* original_path, struct array* changed_path) {   //longest common subsequence
+    long len1 = array_len(original_path);
+    long len2 = array_len(changed_path);
+    long set1[len1];
+    long set2[len2];
+    get_edge_ids_from_path(original_path, set1, len1);
+    get_edge_ids_from_path(changed_path, set2, len2);
+    long lcs_len[len1+1][len2+1];    // LCSの長さを格納する2次元配列 https://www.cs.t-kougei.ac.jp/SSys/LCS.htm
+    long max_path_len = (len1 >= len2) ? len1 : len2;
+    double lcs_similarity;
+
+    for (int i = 0; i <= len1; i++) {
+        for (int j = 0; j <= len2; j++) {
+            if (i == 0 || j == 0) { //添字0はカラ文字列なので0で初期化
+                lcs_len[i][j] = 0;
+            } else if (set1[i-1] == set2[j-1]) {    //pathのエッジidが一致しているなら、LCSの左上成分+1
+                lcs_len[i][j] = lcs_len[i-1][j-1] + 1;
+            } else {    //pathのエッジidが一致してなければ、LCSの左成分と上成分の大きい方を選ぶ
+                lcs_len[i][j] = (lcs_len[i-1][j] > lcs_len[i][j-1]) ? lcs_len[i-1][j] : lcs_len[i][j-1];
+            }
+            //printf("%ld\t", lcs_len[i][j]);    //デバッグ用
+        }
+        //printf("\n");
+    }
+
+    lcs_similarity = (double) lcs_len[len1][len2] / (double) max_path_len;
+
+    return lcs_similarity;
+}
+
+double calc_ld_similarity(struct array* original_path, struct array* changed_path) {    //Levenshtein distance
     double ld_similarity;
     return ld_similarity;
 }
 
-double culc_lcs_similarity(struct array* original_path, struct array* changed_path) {   //longest common subsequence
-    double lcs_similarity;
-    return lcs_similarity;
-}
+void get_edge_ids_from_path(struct array* path, long* edge_ids, long size) {    //pathのエッジ情報をedge_idsに配列としてコピー
 
-long* get_edge_ids_from_path(struct array* path) {  //配列使用後はfree()
-    long size = array_len(path);
-    long* edge_ids = malloc(sizeof(long) * size);
     for (int i = 0; i < size; i++) {
         struct route_hop* hop = array_get(path, i);
         edge_ids[i] = hop->edge_id;
     }
-    return edge_ids;
+}
+
+void get_node_ids_from_path(struct array* path, long* node_ids, long size) {
+    for (int i = 0; i < size; i++) {
+        struct route_hop* hop = array_get(path, i);
+        if (i == 0) {
+            node_ids[0] = hop->from_node_id; // 最初のノード
+        }
+        node_ids[i + 1] = hop->to_node_id;   // 各エッジのto_node_id
+    }
 }
