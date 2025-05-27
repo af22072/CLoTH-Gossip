@@ -277,8 +277,9 @@ void read_input(struct network_params* net_params, struct payments_params* pay_p
       fclose(input_file);
       exit(-1);
     }
-
-    value[strlen(value)-1] = '\0';
+    if (value[strlen(value)-1] == '\n') {
+      value[strlen(value)-1] = '\0';
+    }
 
     if(strcmp(parameter, "generate_network_from_file")==0){
       if(strcmp(value, "true")==0)
@@ -391,9 +392,9 @@ void read_input(struct network_params* net_params, struct payments_params* pay_p
         pay_params->max_fee_limit_sigma = strtod(value, NULL);
     }
     else if (strcmp(parameter, "test_params")==0) {
-      net_params->test_param = strtod(value, NULL);
-    }
-    else{
+      net_params->test_param = (int)strtod(value, NULL);
+      printf("test_param: %d\n", net_params->test_param);
+    }else{
       fprintf(stderr, "ERROR: unknown parameter <%s>\n", parameter);
       fclose(input_file);
       exit(-1);
