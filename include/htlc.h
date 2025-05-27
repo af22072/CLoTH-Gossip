@@ -62,8 +62,8 @@ double calc_lcs_similarity(struct array* original_path, struct array* changed_pa
 
 double calc_ld_similarity(struct array* original_path, struct array* changed_path);
 
-void get_edge_ids_from_path(struct array* path, long *edge_ids, long size);
+void get_edge_ids_from_path(struct array* path, long *edge_ids);
 
-void get_node_ids_from_path(struct array* path, long* node_ids, long size);
+void get_node_ids_from_path(struct array* path, long* node_ids);
 
 #endif

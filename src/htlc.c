@@ -1030,7 +1030,7 @@ int path_cmp(struct array* path1, struct array* path2) {    //same:0,different:1
     return 0;
 }
 //保留
-// double culc_consistency(struct array* original_path, struct array* changed_path) {
+// double calc_consistency(struct array* original_path, struct array* changed_path) {
 //     double consistency;
 //     double n = 0;
 //     double m = (double)array_len(original_path);
@@ -1046,53 +1046,57 @@ int path_cmp(struct array* path1, struct array* path2) {    //same:0,different:1
 //     return consistency;
 // }
 
-double calc_jaccard_index(struct array* original_path, struct array* changed_path) {
+double calc_jaccard_index(struct array *original_path, struct array *changed_path) {
     long len1 = array_len(original_path);
     long len2 = array_len(changed_path);
     long set1[len1];
     long set2[len2];
-    get_edge_ids_from_path(original_path, set1, len1);
-    get_edge_ids_from_path(changed_path, set2, len2);
-    int intersection = 0;   //積集合のカウント.
-    long union_count = len1;  // 和集合のカウント、最初のセットのサイズで初期化.
+    get_edge_ids_from_path(original_path, set1);
+    get_edge_ids_from_path(changed_path, set2);
+    int intersection = 0; //積集合のカウント.
+    long union_count = len1; // 和集合のカウント、最初のセットのサイズで初期化.
     // set2の要素がset1にあるかどうか判定.
     for (int i = 0; i < len2; i++) {
-        int found = 0;  //0:見つからない, 1:見つかった.
+        int found = 0; //0:見つからない, 1:見つかった.
         for (int j = 0; j < len1; j++) {
             if (set2[i] == set1[j]) {
                 found = 1;
                 break;
             }
         }
-        found ? intersection++ : union_count++;  // すでにある要素(1)なら積集合,新しい要素(0)なら和集合のカウントを増やす
+        found ? intersection++ : union_count++; // すでにある要素(1)なら積集合,新しい要素(0)なら和集合のカウントを増やす.
     }
 
-    double similarity = union_count > 0 ? (double)intersection / (double) union_count : 0.0;
+    double similarity = union_count > 0 ? (double) intersection / (double) union_count : 0.0;
 
     return similarity;
 }
 
-double calc_lcs_similarity(struct array* original_path, struct array* changed_path) {   //longest common subsequence
+double calc_lcs_similarity(struct array *original_path, struct array *changed_path) {
+    //longest common subsequence
     long len1 = array_len(original_path);
     long len2 = array_len(changed_path);
     long set1[len1];
     long set2[len2];
-    get_edge_ids_from_path(original_path, set1, len1);
-    get_edge_ids_from_path(changed_path, set2, len2);
-    long lcs_len[len1+1][len2+1];    // LCSの長さを格納する2次元配列 https://www.cs.t-kougei.ac.jp/SSys/LCS.htm
+    get_edge_ids_from_path(original_path, set1);
+    get_edge_ids_from_path(changed_path, set2);
+    long lcs_len[len1 + 1][len2 + 1]; // LCSの長さを格納する2次元配列 https://www.cs.t-kougei.ac.jp/SSys/LCS.htm
     long max_path_len = (len1 >= len2) ? len1 : len2;
     double lcs_similarity;
 
     for (int i = 0; i <= len1; i++) {
         for (int j = 0; j <= len2; j++) {
-            if (i == 0 || j == 0) { //添字0はカラ文字列なので0で初期化
+            if (i == 0 || j == 0) {
+                //添字0はカラ文字列なので0で初期化.
                 lcs_len[i][j] = 0;
-            } else if (set1[i-1] == set2[j-1]) {    //pathのエッジidが一致しているなら、LCSの左上成分+1
-                lcs_len[i][j] = lcs_len[i-1][j-1] + 1;
-            } else {    //pathのエッジidが一致してなければ、LCSの左成分と上成分の大きい方を選ぶ
-                lcs_len[i][j] = (lcs_len[i-1][j] > lcs_len[i][j-1]) ? lcs_len[i-1][j] : lcs_len[i][j-1];
+            } else if (set1[i - 1] == set2[j - 1]) {
+                //pathのエッジidが一致しているなら、LCSの左上成分+1.
+                lcs_len[i][j] = lcs_len[i - 1][j - 1] + 1;
+            } else {
+                //pathのエッジidが一致してなければ、LCSの左成分と上成分の大きい方を選ぶ.
+                lcs_len[i][j] = (lcs_len[i - 1][j] > lcs_len[i][j - 1]) ? lcs_len[i - 1][j] : lcs_len[i][j - 1];
             }
-            //printf("%ld\t", lcs_len[i][j]);    //デバッグ用
+            //printf("%ld\t", lcs_len[i][j]);    //デバッグ用.
         }
         //printf("\n");
     }
@@ -1102,25 +1106,29 @@ double calc_lcs_similarity(struct array* original_path, struct array* changed_pa
     return lcs_similarity;
 }
 
-double calc_ld_similarity(struct array* original_path, struct array* changed_path) {    //Levenshtein distance
+double calc_ld_similarity(struct array *original_path, struct array *changed_path) {
+    //Levenshtein distance
     double ld_similarity;
+
     return ld_similarity;
 }
 
-void get_edge_ids_from_path(struct array* path, long* edge_ids, long size) {    //pathのエッジ情報をedge_idsに配列としてコピー
-
-    for (int i = 0; i < size; i++) {
-        struct route_hop* hop = array_get(path, i);
+void get_edge_ids_from_path(struct array *path, long *edge_ids) {
+    //pathのエッジ情報をedge_idsに配列としてコピー
+    long len = array_len(path);
+    for (int i = 0; i < len; i++) {
+        struct route_hop *hop = array_get(path, i);
         edge_ids[i] = hop->edge_id;
     }
 }
 
-void get_node_ids_from_path(struct array* path, long* node_ids, long size) {
-    for (int i = 0; i < size; i++) {
-        struct route_hop* hop = array_get(path, i);
+void get_node_ids_from_path(struct array *path, long *node_ids) {
+    long len = array_len(path);
+    for (int i = 0; i < len; i++) {
+        struct route_hop *hop = array_get(path, i);
         if (i == 0) {
             node_ids[0] = hop->from_node_id; // 最初のノード
         }
-        node_ids[i + 1] = hop->to_node_id;   // 各エッジのto_node_id
+        node_ids[i + 1] = hop->to_node_id; // 各エッジのto_node_id
     }
 }
