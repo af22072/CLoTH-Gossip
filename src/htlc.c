@@ -1115,26 +1115,31 @@ double calc_ld_similarity(struct array *original_path, struct array *changed_pat
     get_edge_ids_from_path(original_path, set1);
     get_edge_ids_from_path(changed_path, set2);
     long ld_matrix[len1 + 1][len2 + 1]; // Levenshtein距離を格納する2次元配列(DP)
-    long max_len = (len1 >= len2) ? len1 : len2;    //正規化のための長さの最大値.
+    long max_len = (len1 >= len2) ? len1 : len2; //正規化のための長さの最大値.
     double ld_similarity;
-
-    //どちらかが添字0なら，もう片方の文字数が，Levenshtein距離になるので初期化.
-    for (long i = 0; i <= len1; i++) ld_matrix[i][0] = i;
-    for (long j = 0; j <= len2; j++) ld_matrix[0][j] = j;
 
     for (long i = 1; i <= len1; i++) {
         for (long j = 1; j <= len2; j++) {
-            long cost = (set1[i - 1] == set2[j - 1]) ? 0 : 1;
-            long del = ld_matrix[i - 1][j] + 1;         //削除
-            long ins = ld_matrix[i][j - 1] + 1;         //挿入
-            long sub = ld_matrix[i - 1][j - 1] + cost;  //置換
-            long min = (del < ins) ? del : ins; //削除と挿入と置換の小さい方を選ぶ.
-            min = (min < sub) ? min : sub;
-            ld_matrix[i][j] = min; //最小値を格納.
+            //どちらかが添字0なら，もう片方の文字数が，Levenshtein距離になるので初期化.
+            if (i == 0) {
+                ld_matrix[i][j] = j;
+            } else if (j == 0) {
+                ld_matrix[i][j] = i;
+            } else {
+                long cost = (set1[i - 1] == set2[j - 1]) ? 0 : 1;
+                long del = ld_matrix[i - 1][j] + 1; //削除
+                long ins = ld_matrix[i][j - 1] + 1; //挿入
+                long sub = ld_matrix[i - 1][j - 1] + cost; //置換
+                long min = (del < ins) ? del : ins; //削除と挿入と置換の小さい方を選ぶ.
+                min = (min < sub) ? min : sub;
+                ld_matrix[i][j] = min; //最小値を格納.
+            }
+            //printf("%ld\t", lcs_len[i][j]);
         }
+        //printf("\n");
     }
 
-    ld_similarity = 1.0 - ((double)ld_matrix[len1][len2] / (double)max_len);
+    ld_similarity = 1.0 - ((double) ld_matrix[len1][len2] / (double) max_len);
 
     return ld_similarity;
 }
