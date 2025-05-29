@@ -58,6 +58,8 @@ int path_cmp(struct array* path1, struct array* path2);
 
 double calc_jaccard_index(struct array* original_path, struct array* changed_path);
 
+double calc_dice_index(struct array *original_path, struct array *changed_path);
+
 double calc_lcs_similarity(struct array* original_path, struct array* changed_path);
 
 double calc_ld_similarity(struct array* original_path, struct array* changed_path);

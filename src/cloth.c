@@ -156,7 +156,7 @@ void write_output(struct network* network, struct array* payments, char output_d
     printf("ERROR cannot open payment_output.csv\n");
     exit(-1);
   }
-  fprintf(csv_payment_output, "id,sender_id,receiver_id,amount,start_time,max_fee_limit,end_time,mpp,is_success,no_balance_count,offline_node_count,timeout_exp,attempts,route,total_fee,attempts_history,is_path_changed,jaccard_index,lcs_similarity,ld_similarity\n");
+  fprintf(csv_payment_output, "id,sender_id,receiver_id,amount,start_time,max_fee_limit,end_time,mpp,is_success,no_balance_count,offline_node_count,timeout_exp,attempts,route,total_fee,attempts_history,is_path_changed,jaccard_index,dice_index,lcs_similarity,ld_similarity\n");
   for(i=0; i<array_len(payments); i++)  {
     payment = array_get(payments, i);
     if (payment->id == -1) continue;
@@ -200,6 +200,7 @@ void write_output(struct network* network, struct array* payments, char output_d
     }
     fprintf(csv_payment_output, ",%d", payment->is_path_changed);
     fprintf(csv_payment_output, ",%lf", payment->jaccard_index);
+    fprintf(csv_payment_output, ",%lf", payment->dice_index);
     fprintf(csv_payment_output, ",%lf", payment->lcs_similarity);
     fprintf(csv_payment_output, ",%lf", payment->ld_similarity);
     fprintf(csv_payment_output, "\n");

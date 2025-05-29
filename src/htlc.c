@@ -331,7 +331,7 @@ void find_path(struct event *event, struct simulation *simulation, struct networ
                               &error, net_params.routing_method, exclude_edges, payment->max_fee_limit);
               print_exclude_edges(exclude_edges);
               print_path(path_backup);
-              (path ==NULL) ? printf("path: NULL\n.") : print_path(path);
+              (path ==NULL) ? printf("path: NULL.\n") : print_path(path);
               if (path != NULL) {
                   payment->is_path_changed = 1;
                   break;
@@ -355,8 +355,11 @@ void find_path(struct event *event, struct simulation *simulation, struct networ
           if (path && path_backup) {
               //pathとpath_backupのジャカード係数を計算
               payment->jaccard_index = calc_jaccard_index(path, path_backup);
+              payment->dice_index = calc_dice_index(path, path_backup);
               payment->lcs_similarity = calc_lcs_similarity(path, path_backup);
-              //printf("payment %ld jaccard_index: %f, lcs_similarity: %f\n", payment->id, payment->jaccard_index, payment->lcs_similarity);
+              payment->ld_similarity = calc_ld_similarity(path, path_backup);
+              printf("payment %ld jaccard_index: %f, dice_index: %f lcs_similarity: %f, ld_similarity: %f\n", payment->id,
+                     payment->jaccard_index, payment->dice_index, payment->lcs_similarity, payment->ld_similarity);
 
           }
           //バックアップの解放
@@ -1066,8 +1069,28 @@ double calc_jaccard_index(struct array *original_path, struct array *changed_pat
         }
         found ? intersection++ : union_count++; // すでにある要素(1)なら積集合,新しい要素(0)なら和集合のカウントを増やす.
     }
-
     double similarity = union_count > 0 ? (double) intersection / (double) union_count : 0.0;
+
+    return similarity;
+}
+double calc_dice_index(struct array *original_path, struct array *changed_path) {
+    long len1 = array_len(original_path);
+    long len2 = array_len(changed_path);
+    long set1[len1];
+    long set2[len2];
+    get_edge_ids_from_path(original_path, set1);
+    get_edge_ids_from_path(changed_path, set2);
+    int intersection = 0; //積集合のカウント.
+    // set2の要素がset1にあるかどうか判定.
+    for (int i = 0; i < len2; i++) {
+        for (int j = 0; j < len1; j++) {
+            if (set2[i] == set1[j]) {
+                intersection++; // すでにある要素(1)なら積集合のカウントを増やす.
+                break;
+            }
+        }
+    }
+    double similarity = ((double)2 * intersection)/((double)len1 + (double)len2);
 
     return similarity;
 }
@@ -1083,6 +1106,17 @@ double calc_lcs_similarity(struct array *original_path, struct array *changed_pa
     long lcs_matrix[len1 + 1][len2 + 1]; // LCSの長さを格納する2次元配列(DP) https://www.cs.t-kougei.ac.jp/SSys/LCS.htm
     long max_len = (len1 >= len2) ? len1 : len2;    //正規化のための長さの最大値.
     double lcs_similarity;
+    len1 = 4;
+    len2 = 4;
+    set1[0] = 1;
+    set1[1] = 3;
+    set1[2] = 4;
+    set1[3] = 5;
+    set2[0] = 1;
+    set2[1] = 2;
+    set2[2] = 3;
+    set2[3] = 4;
+    printf("lcs_matrix\n");
 
     for (int i = 0; i <= len1; i++) {
         for (int j = 0; j <= len2; j++) {
@@ -1096,9 +1130,9 @@ double calc_lcs_similarity(struct array *original_path, struct array *changed_pa
                 //pathのエッジidが一致してなければ、LCSの左成分と上成分の大きい方を選ぶ.
                 lcs_matrix[i][j] = (lcs_matrix[i - 1][j] > lcs_matrix[i][j - 1]) ? lcs_matrix[i - 1][j] : lcs_matrix[i][j - 1];
             }
-            //printf("%ld\t", lcs_len[i][j]);
+            printf("%ld\t", lcs_matrix[i][j]);
         }
-        //printf("\n");
+        printf("\n");
     }
 
     lcs_similarity = (double) lcs_matrix[len1][len2] / (double) max_len;
@@ -1117,9 +1151,20 @@ double calc_ld_similarity(struct array *original_path, struct array *changed_pat
     long ld_matrix[len1 + 1][len2 + 1]; // Levenshtein距離を格納する2次元配列(DP)
     long max_len = (len1 >= len2) ? len1 : len2; //正規化のための長さの最大値.
     double ld_similarity;
+    len1 = 4;
+    len2 =4;
+    set1[0] = 1;
+    set1[1] = 3;
+    set1[2] = 4;
+    set1[3] = 5;
+    set2[0] = 1;
+    set2[1] = 2;
+    set2[2] = 3;
+    set2[3] = 4;
+    printf("ld_matrix\n");
 
-    for (long i = 1; i <= len1; i++) {
-        for (long j = 1; j <= len2; j++) {
+    for (long i = 0; i <= len1; i++) {
+        for (long j = 0; j <= len2; j++) {
             //どちらかが添字0なら，もう片方の文字数が，Levenshtein距離になるので初期化.
             if (i == 0) {
                 ld_matrix[i][j] = j;
@@ -1134,7 +1179,7 @@ double calc_ld_similarity(struct array *original_path, struct array *changed_pat
                 min = (min < sub) ? min : sub;
                 ld_matrix[i][j] = min; //最小値を格納.
             }
-            printf("%ld\t", lcs_len[i][j]);
+            printf("%ld\t", ld_matrix[i][j]);
         }
         printf("\n");
     }
@@ -1142,6 +1187,7 @@ double calc_ld_similarity(struct array *original_path, struct array *changed_pat
     ld_similarity = 1.0 - ((double) ld_matrix[len1][len2] / (double) max_len);
 
     return ld_similarity;
+
 }
 
 void get_edge_ids_from_path(struct array *path, long *edge_ids) {
