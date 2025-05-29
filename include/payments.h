@@ -44,7 +44,7 @@ struct payment {
   int is_path_changed; // 1 if the path has been changed, 0 otherwise
   double jaccard_index;
   double lcs_similarity; // Longest Common Subsequence similarity
-  // double ld_similarity;
+  double ld_similarity;  //levenshtein distance similarity
 };
 
 struct attempt {

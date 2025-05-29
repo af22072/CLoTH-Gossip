@@ -329,9 +329,9 @@ void find_path(struct event *event, struct simulation *simulation, struct networ
 
               path = dijkstra(payment->sender, payment->receiver, payment->amount, network, simulation->current_time, 0,
                               &error, net_params.routing_method, exclude_edges, payment->max_fee_limit);
-              // print_exclude_edges(exclude_edges);
-              // print_path(path_backup);
-              // (path ==NULL) ? printf("path: NULL\n.") : print_path(path);
+              print_exclude_edges(exclude_edges);
+              print_path(path_backup);
+              (path ==NULL) ? printf("path: NULL\n.") : print_path(path);
               if (path != NULL) {
                   payment->is_path_changed = 1;
                   break;
@@ -1134,9 +1134,9 @@ double calc_ld_similarity(struct array *original_path, struct array *changed_pat
                 min = (min < sub) ? min : sub;
                 ld_matrix[i][j] = min; //最小値を格納.
             }
-            //printf("%ld\t", lcs_len[i][j]);
+            printf("%ld\t", lcs_len[i][j]);
         }
-        //printf("\n");
+        printf("\n");
     }
 
     ld_similarity = 1.0 - ((double) ld_matrix[len1][len2] / (double) max_len);

@@ -41,6 +41,7 @@ struct payment* new_payment(long id, long sender, long receiver, uint64_t amount
   p->is_path_changed = 0;
   p->jaccard_index = 1.0;
   p->lcs_similarity = 1.0;
+  p->ld_similarity = 1.0;
   return p;
 }
 
