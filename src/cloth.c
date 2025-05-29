@@ -348,7 +348,7 @@ void read_input(struct network_params* net_params, struct payments_params* pay_p
       else if(strcmp(value, "ideal")==0)
         net_params->routing_method=IDEAL;
       else{
-        fprintf(stderr, "ERROR: wrong value of parameter <%s> in <cloth_input.txt>. Possible values are [\"cloth_original\", \"channel_update\", \"group_routing\", \"ideal\",\"cloth_one_hop_change\"]\n", parameter);
+        fprintf(stderr, "ERROR: wrong value of parameter <%s> in <cloth_input.txt>. Possible values are [\"cloth_original\", \"channel_update\", \"group_routing\", \"ideal\"]\n", parameter);
         fclose(input_file);
         exit(-1);
       }

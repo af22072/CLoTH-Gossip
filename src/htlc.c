@@ -266,6 +266,9 @@ void find_path(struct event *event, struct simulation *simulation, struct networ
             struct attempt* a = iterator->data;
             struct edge* exclude_edge = array_get(network->edges, a->error_edge_id);
             exclude_edges = push(exclude_edges, exclude_edge);
+
+              printf("2nd____");
+              print_exclude_edges(exclude_edges);
           }
 
           path = dijkstra(payment->sender, payment->receiver, payment->amount, network, simulation->current_time, 0, &error, net_params.routing_method, exclude_edges, payment->max_fee_limit);
@@ -327,11 +330,12 @@ void find_path(struct event *event, struct simulation *simulation, struct networ
               struct element *exclude_edges = NULL;
               exclude_edges = push(exclude_edges, edge);
 
+              printf("2nd____");
+              print_exclude_edges(exclude_edges);
+
               path = dijkstra(payment->sender, payment->receiver, payment->amount, network, simulation->current_time, 0,
                               &error, net_params.routing_method, exclude_edges, payment->max_fee_limit);
-              print_exclude_edges(exclude_edges);
-              print_path(path_backup);
-              (path ==NULL) ? printf("path: NULL.\n") : print_path(path);
+
               if (path != NULL) {
                   payment->is_path_changed = 1;
                   break;
@@ -351,16 +355,13 @@ void find_path(struct event *event, struct simulation *simulation, struct networ
                   path = array_insert(path, hop_copy);
               }
           }
-          //ジャカード係数,LCSを計算
+          //類似性を計算
           if (path && path_backup) {
               //pathとpath_backupのジャカード係数を計算
               payment->jaccard_index = calc_jaccard_index(path, path_backup);
               payment->dice_index = calc_dice_index(path, path_backup);
               payment->lcs_similarity = calc_lcs_similarity(path, path_backup);
               payment->ld_similarity = calc_ld_similarity(path, path_backup);
-              printf("payment %ld jaccard_index: %f, dice_index: %f lcs_similarity: %f, ld_similarity: %f\n", payment->id,
-                     payment->jaccard_index, payment->dice_index, payment->lcs_similarity, payment->ld_similarity);
-
           }
           //バックアップの解放
           for (int i = 0; i < array_len(path_backup); i++) {
@@ -1032,22 +1033,6 @@ int path_cmp(struct array* path1, struct array* path2) {    //same:0,different:1
     }
     return 0;
 }
-//保留
-// double calc_consistency(struct array* original_path, struct array* changed_path) {
-//     double consistency;
-//     double n = 0;
-//     double m = (double)array_len(original_path);
-//     int i_max;
-//     if (array_len(original_path)>=array_len(changed_path)) i_max = (int)array_len(changed_path);
-//     else i_max = (int)array_len(original_path);
-//     for (int i = 0; i < i_max; i++) {
-//         struct route_hop* hop1 = array_get(original_path, i);
-//         struct route_hop* hop2 = array_get(changed_path, i);
-//         if (hop1->edge_id != hop2->edge_id) n++;
-//     }
-//     consistency = (m-n)/m;
-//     return consistency;
-// }
 
 double calc_jaccard_index(struct array *original_path, struct array *changed_path) {
     long len1 = array_len(original_path);
@@ -1106,17 +1091,7 @@ double calc_lcs_similarity(struct array *original_path, struct array *changed_pa
     long lcs_matrix[len1 + 1][len2 + 1]; // LCSの長さを格納する2次元配列(DP) https://www.cs.t-kougei.ac.jp/SSys/LCS.htm
     long max_len = (len1 >= len2) ? len1 : len2;    //正規化のための長さの最大値.
     double lcs_similarity;
-    len1 = 4;
-    len2 = 4;
-    set1[0] = 1;
-    set1[1] = 3;
-    set1[2] = 4;
-    set1[3] = 5;
-    set2[0] = 1;
-    set2[1] = 2;
-    set2[2] = 3;
-    set2[3] = 4;
-    printf("lcs_matrix\n");
+    // printf("lcs_matrix\n");
 
     for (int i = 0; i <= len1; i++) {
         for (int j = 0; j <= len2; j++) {
@@ -1130,9 +1105,9 @@ double calc_lcs_similarity(struct array *original_path, struct array *changed_pa
                 //pathのエッジidが一致してなければ、LCSの左成分と上成分の大きい方を選ぶ.
                 lcs_matrix[i][j] = (lcs_matrix[i - 1][j] > lcs_matrix[i][j - 1]) ? lcs_matrix[i - 1][j] : lcs_matrix[i][j - 1];
             }
-            printf("%ld\t", lcs_matrix[i][j]);
+            //printf("%ld\t", lcs_matrix[i][j]);
         }
-        printf("\n");
+        //printf("\n");
     }
 
     lcs_similarity = (double) lcs_matrix[len1][len2] / (double) max_len;
@@ -1151,17 +1126,7 @@ double calc_ld_similarity(struct array *original_path, struct array *changed_pat
     long ld_matrix[len1 + 1][len2 + 1]; // Levenshtein距離を格納する2次元配列(DP)
     long max_len = (len1 >= len2) ? len1 : len2; //正規化のための長さの最大値.
     double ld_similarity;
-    len1 = 4;
-    len2 =4;
-    set1[0] = 1;
-    set1[1] = 3;
-    set1[2] = 4;
-    set1[3] = 5;
-    set2[0] = 1;
-    set2[1] = 2;
-    set2[2] = 3;
-    set2[3] = 4;
-    printf("ld_matrix\n");
+    //printf("ld_matrix\n");
 
     for (long i = 0; i <= len1; i++) {
         for (long j = 0; j <= len2; j++) {
@@ -1179,9 +1144,9 @@ double calc_ld_similarity(struct array *original_path, struct array *changed_pat
                 min = (min < sub) ? min : sub;
                 ld_matrix[i][j] = min; //最小値を格納.
             }
-            printf("%ld\t", ld_matrix[i][j]);
+            //printf("%ld\t", ld_matrix[i][j]);
         }
-        printf("\n");
+        //printf("\n");
     }
 
     ld_similarity = 1.0 - ((double) ld_matrix[len1][len2] / (double) max_len);
@@ -1209,3 +1174,12 @@ void get_node_ids_from_path(struct array *path, long *node_ids) {
         node_ids[i + 1] = hop->to_node_id; // 各エッジのto_node_id
     }
 }
+
+// void print_info(struct array* path, struct array* path_backup, struct element* exclude_edges, struct payment *payment) {
+//     printf("payment_id: %ld\n", payment->id);
+//     (exclude_edges == NULL) ? printf("exclude_edges: NULL\n") : print_exclude_edges(exclude_edges);
+//     (path_backup == NULL) ? printf("path: NULL\n") : print_path(path_backup);
+//     (path == NULL) ? printf("path: NULL\n") : print_path(path);
+//     printf("jaccard_index: %f, dice_index: %f lcs_similarity: %f, ld_similarity: %f\n",
+//            payment->jaccard_index, payment->dice_index, payment->lcs_similarity, payment->ld_similarity);
+// }
