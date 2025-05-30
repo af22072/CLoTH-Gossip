@@ -326,6 +326,7 @@ void find_path(struct event *event, struct simulation *simulation, struct networ
               struct edge *edge = array_get(network->edges, hop->edge_id);
               struct element *exclude_edges = NULL;
               exclude_edges = push(exclude_edges, edge);
+              //exclude_edgesのもともと除外してたエッジ
               if (routing_method != CLOTH_ORIGINAL && payment->attempts != 1) {
                   for(struct element* iterator = payment->history; iterator != NULL; iterator = iterator->next) {
                       struct attempt* a = iterator->data;
@@ -391,9 +392,18 @@ void find_path(struct event *event, struct simulation *simulation, struct networ
               //せんたくしたノードに接続されたすべてのエッジをexclude_edgesとする
               struct node* node = array_get(network->nodes, selected_node_id);
               struct element *exclude_edges = NULL;
+              //選択したノードに接続されたすべてのエッジをexclude_edgesに追加
               for (int j = 0; j < array_len(node->open_edges); j++) {
                   struct edge* edge = array_get(node->open_edges, j);
                   exclude_edges = push(exclude_edges, edge);
+              }
+              //exclude_edgesのもともと除外してたエッジ
+              if (routing_method != CLOTH_ORIGINAL && payment->attempts != 1) {
+                  for(struct element* iterator = payment->history; iterator != NULL; iterator = iterator->next) {
+                      struct attempt* a = iterator->data;
+                      struct edge* exclude_edge = array_get(network->edges, a->error_edge_id);
+                      exclude_edges = push(exclude_edges, exclude_edge);
+                  }
               }
 
               path = dijkstra(payment->sender, payment->receiver, payment->amount, network, simulation->current_time, 0,
