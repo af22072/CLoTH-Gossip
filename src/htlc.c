@@ -267,8 +267,6 @@ void find_path(struct event *event, struct simulation *simulation, struct networ
             struct edge* exclude_edge = array_get(network->edges, a->error_edge_id);
             exclude_edges = push(exclude_edges, exclude_edge);
           }
-          printf("1st__");
-          print_exclude_edges(exclude_edges);
 
           path = dijkstra(payment->sender, payment->receiver, payment->amount, network, simulation->current_time, 0, &error, net_params.routing_method, exclude_edges, payment->max_fee_limit);
       }
@@ -328,9 +326,13 @@ void find_path(struct event *event, struct simulation *simulation, struct networ
               struct edge *edge = array_get(network->edges, hop->edge_id);
               struct element *exclude_edges = NULL;
               exclude_edges = push(exclude_edges, edge);
-
-              printf("2nd__");
-              print_exclude_edges(exclude_edges);
+              if (routing_method != CLOTH_ORIGINAL && payment->attempts != 1) {
+                  for(struct element* iterator = payment->history; iterator != NULL; iterator = iterator->next) {
+                      struct attempt* a = iterator->data;
+                      struct edge* exclude_edge = array_get(network->edges, a->error_edge_id);
+                      exclude_edges = push(exclude_edges, exclude_edge);
+                  }
+              }
 
               path = dijkstra(payment->sender, payment->receiver, payment->amount, network, simulation->current_time, 0,
                               &error, net_params.routing_method, exclude_edges, payment->max_fee_limit);
