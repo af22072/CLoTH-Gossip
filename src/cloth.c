@@ -156,7 +156,7 @@ void write_output(struct network* network, struct array* payments, char output_d
     printf("ERROR cannot open payment_output.csv\n");
     exit(-1);
   }
-  fprintf(csv_payment_output, "id,sender_id,receiver_id,amount,start_time,max_fee_limit,end_time,mpp,is_success,no_balance_count,offline_node_count,timeout_exp,attempts,route,total_fee,attempts_history,is_path_changed,jaccard_index,dice_index,lcs_similarity,ld_similarity\n");
+  fprintf(csv_payment_output, "id,sender_id,receiver_id,amount,start_time,max_fee_limit,end_time,mpp,is_success,no_balance_count,offline_node_count,timeout_exp,attempts,route,total_fee,attempts_history,is_path_changed,jaccard_index,dice_index,lcs_similarity,ld_similarity,is_estimate_success\n");
   for(i=0; i<array_len(payments); i++)  {
     payment = array_get(payments, i);
     if (payment->id == -1) continue;
@@ -203,6 +203,7 @@ void write_output(struct network* network, struct array* payments, char output_d
     fprintf(csv_payment_output, ",%lf", payment->dice_index);
     fprintf(csv_payment_output, ",%lf", payment->lcs_similarity);
     fprintf(csv_payment_output, ",%lf", payment->ld_similarity);
+    fprintf(csv_payment_output, ",%d", payment->is_estimate_success);
     fprintf(csv_payment_output, "\n");
   }
   fclose(csv_payment_output);
@@ -396,6 +397,10 @@ void read_input(struct network_params* net_params, struct payments_params* pay_p
     else if (strcmp(parameter, "test_params")==0) {
       net_params->test_param = (int)strtod(value, NULL);
       printf("test_param: %d\n", net_params->test_param);
+    }
+    else if (strcmp(parameter, "estimate_payment_info")==0) {
+      net_params->estimate_payment_info = (int)strtod(value, NULL);
+      printf("estimate_payment_info: %d\n", net_params->estimate_payment_info);
     }else{
       fprintf(stderr, "ERROR: unknown parameter <%s>\n", parameter);
       fclose(input_file);

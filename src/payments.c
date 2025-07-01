@@ -43,6 +43,7 @@ struct payment* new_payment(long id, long sender, long receiver, uint64_t amount
   p->dice_index = 1.0;
   p->lcs_similarity = 1.0;
   p->ld_similarity = 1.0;
+  p->is_estimate_success = 0;
   return p;
 }
 

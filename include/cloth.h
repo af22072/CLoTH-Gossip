@@ -28,6 +28,7 @@ struct network_params{
   int group_size;
   float group_limit_rate;
   unsigned int test_param;  // 0: no test, 1: test v1, 2: test v2, 3:test v3
+  unsigned int estimate_payment_info; // 0: no estimate, 1: estimate payment info
 };
 
 struct payments_params{

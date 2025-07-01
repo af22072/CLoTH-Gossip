@@ -46,6 +46,7 @@ struct payment {
   double dice_index;
   double lcs_similarity; // Longest Common Subsequence similarity
   double ld_similarity;  //levenshtein distance similarity
+  int is_estimate_success;
 };
 
 struct attempt {

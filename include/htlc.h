@@ -68,4 +68,6 @@ void get_edge_ids_from_path(struct array* path, long *edge_ids);
 
 void get_node_ids_from_path(struct array* path, long* node_ids);
 
+int estimate_payment_info(struct array *path);
+
 #endif
