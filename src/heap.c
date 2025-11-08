@@ -35,7 +35,7 @@ struct heap* resize_heap(struct heap* h) {
   return new;
 }
 
-void heapify(struct heap* h, long i, int(*compare)() ){
+void heapify(struct heap* h, long i, int(*compare)() ){ //int(*compare)(void*, void*)
   long left_child, right_child, smallest;
   int comp_res;
 

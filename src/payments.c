@@ -49,7 +49,7 @@ struct payment* new_payment(long id, long sender, long receiver, uint64_t amount
 
 
 /* generate random payments and store them in "payments.csv" */
-void generate_random_payments(struct payments_params pay_params, long n_nodes, gsl_rng * random_generator) {
+void generate_random_payments(struct payments_params pay_params,struct network_params net_params, struct network *network, long n_nodes, gsl_rng * random_generator) {
   long i, sender_id, receiver_id;
   uint64_t  payment_amount=0, payment_time=1, next_payment_interval, max_fee_limit=UINT64_MAX;
   long payment_idIndex=0;
@@ -61,11 +61,48 @@ void generate_random_payments(struct payments_params pay_params, long n_nodes, g
     exit(-1);
   }
   fprintf(payments_file, "id,sender_id,receiver_id,amount,start_time,max_fee_limit\n");
+  //ここから
+  int n_patterns = 5; // 利用可能なパターン数
+  double weights[n_patterns][n_nodes], total_weight[n_patterns];
+  for (i = 0; i < n_patterns; i++) {
+    total_weight[i] = 0.0;
+  }
+  if (net_params.weighted_random_select != 0) {
+    // 重み配列の作成
+    for (i = 0; i < n_patterns; i++) {
+      compute_node_weights(network, n_nodes, 1.0, 1.0, weights[i], &total_weight[i], i+1);
+    }
+    //compute_node_weights(network, n_nodes, 1.0, 1.0, weights, &total_weight, net_params.weighted_random_select);
+  }
 
   for(i=0;i<pay_params.n_payments;i++) {
     do{
-      sender_id = gsl_rng_uniform_int(random_generator,n_nodes);
-      receiver_id = gsl_rng_uniform_int(random_generator, n_nodes);
+      if (net_params.weighted_random_select != 0) {
+        if (net_params.weighted_random_select == 1) {
+          sender_id = weighted_random_select(weights[0], total_weight[0], random_generator, n_nodes);
+          receiver_id = weighted_random_select(weights[0], total_weight[0], random_generator, n_nodes);
+        }
+        else if (net_params.weighted_random_select == 2)  {
+          sender_id = weighted_random_select(weights[2], total_weight[2], random_generator, n_nodes);
+          receiver_id = weighted_random_select(weights[2], total_weight[2], random_generator, n_nodes);
+        }
+        else if (net_params.weighted_random_select == 3)  {
+          sender_id = weighted_random_select(weights[0], total_weight[0], random_generator, n_nodes);
+          receiver_id = weighted_random_select(weights[2], total_weight[2], random_generator, n_nodes);
+        }
+        else if (net_params.weighted_random_select == 4)  {
+          sender_id = weighted_random_select(weights[2], total_weight[2], random_generator, n_nodes);
+          receiver_id = weighted_random_select(weights[0], total_weight[0], random_generator, n_nodes);
+        }
+        //receiver_id = weighted_random_select(weights, total_weight, random_generator, n_nodes);
+      }
+      else {  // 通常の一様乱数選択
+        sender_id = gsl_rng_uniform_int(random_generator,n_nodes);
+        receiver_id = gsl_rng_uniform_int(random_generator, n_nodes);
+      }
+      //ここまで
+      // sender_id = gsl_rng_uniform_int(random_generator,n_nodes);
+      // receiver_id = gsl_rng_uniform_int(random_generator, n_nodes);
     } while(sender_id==receiver_id);
     payment_amount = fabs(pay_params.amount_mu + gsl_ran_ugaussian(random_generator) * pay_params.amount_sigma)*1000.0; // convert satoshi to millisatoshi
     /* payment interarrival time is an exponential (Poisson process) whose mean is the inverse of payment rate
@@ -80,6 +117,49 @@ void generate_random_payments(struct payments_params pay_params, long n_nodes, g
   }
 
   fclose(payments_file);
+}
+// ノード次数に基づく重み配列と合計重みを計算
+void compute_node_weights(struct network *network, long n_nodes, double alpha, double epsilon, double *weights, double *total_weight, unsigned int pattern) {
+    long node_degrees[n_nodes];
+    *total_weight = 0.0;
+    for (long i = 0; i < n_nodes; i++) {
+        struct node* node = array_get(network->nodes, i);
+        node_degrees[i] = array_len(node->open_edges);
+        switch (pattern) {
+          case 1:// pattern 1: 重みが次数の逆数に比例
+            weights[i] = 1.0 / pow((double)node_degrees[i] + epsilon, alpha);
+            break;
+          case 2:// pattern 2: 重みが次数10以下のノードに1.0、その他に0.0を割り当て
+            weights[i] = node_degrees[i] <= 10 ? 1.0 : 0.0;
+            break;
+          case 3:// pattern 3: 重みが次数に比例
+            weights[i] = pow((double)node_degrees[i] + epsilon, alpha);
+            break;
+          case 4:// pattern 4: 重みが次数10超のノードに1.0、その他に0.0を割り当て
+            weights[i] = node_degrees[i] > 10 ? 1.0 : 0.0;
+            break;
+          case 5:// pattern 5: 重みが次数10超のノードの逆数に比例
+            weights[i] = 1.0 / pow(node_degrees[i] > 10 ? (double)node_degrees[i] + epsilon : epsilon, alpha);
+            break;
+          default:
+            printf("ERROR: unknown pattern\n");
+        }
+       *total_weight += weights[i];
+    }
+}
+
+// 重みに基づくノード選択関数
+long weighted_random_select(double* weights, double total_weight, gsl_rng* rng, long n_nodes) {
+  double r = gsl_rng_uniform(rng) * total_weight; //決定用の0~total_weightの一様乱数
+  double current_weight = 0.0;
+  //rがノードiに対応する累積重み区間に入っているかどうかを調べ、当てはまる値を返す
+  for (long i = 0; i < n_nodes; i++) {
+    current_weight += weights[i];
+    if (r < current_weight) {
+      return i;
+    }
+  }
+  return -1;
 }
 
 /* generate payments from file */
@@ -116,9 +196,9 @@ struct array* generate_payments(struct payments_params pay_params) {
 }
 
 
-struct array* initialize_payments(struct payments_params pay_params, long n_nodes, gsl_rng* random_generator) {
+struct array* initialize_payments(struct payments_params pay_params, struct network_params net_params, struct network *network, long n_nodes, gsl_rng* random_generator) {
   if(!(pay_params.payments_from_file))
-    generate_random_payments(pay_params, n_nodes, random_generator);
+    generate_random_payments(pay_params, net_params, network, n_nodes, random_generator);
   return generate_payments(pay_params);
 }
 

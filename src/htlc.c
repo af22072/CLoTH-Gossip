@@ -439,6 +439,9 @@ void find_path(struct event *event, struct simulation *simulation, struct networ
           if (estimate_payment_info(path)==1) {
               payment->is_estimate_success = 1;
           }
+          else if (estimate_payment_info(path)==2) {
+              payment->is_estimate_success = 2;
+          }
       }
       generate_send_payment_event(payment, path, simulation, network);
     return;
@@ -1200,20 +1203,28 @@ void get_node_ids_from_path(struct array *path, long *node_ids) {
 //            payment->jaccard_index, payment->dice_index, payment->lcs_similarity, payment->ld_similarity);
 // }
 int estimate_payment_info(struct array *path) {
-    //pathの中継ノード番号がすべて100000より大きいかどうかをチェックして送金情報が推定できるかを判定する
-    //ほんとはノードに属性をもたせて，観測ノードを判定するのが良いが，とりあえず100000より大きいノードは観測ノードとする
+    //支払いを完全に捕捉できない:0,支払いを捕捉:1,一部を捕捉:2
+    //pathの中継ノード番号がすべて6005より大きいかどうかをチェックして送金情報が推定できるかを判定する
+    //ほんとはノードに属性をもたせて，観測ノードを判定するのが良いが，とりあえず6005より大きいノードは観測ノードとする
     long len = array_len(path);
     long set[len+1];
+    int cnt = 0;
     get_node_ids_from_path(path, set);
     //中継ノードなし
     if (len <= 1) {
         return 0;
     }
-    //中継ノードがすべて100000より大きいかどうかをチェック
+    //中継ノードがすべて6005より大きいかどうかをチェック
     for (int i = 1; i < len; i++) {
-        if (set[i] <= 100000) {
-            return 0;
+        if (set[i] >= 6005) {
+            cnt++;
         }
     }
-    return 1;
+    if (cnt == 0) {
+        return 0;
+    }
+    if (cnt == len - 1) {
+        return 1;
+    }
+    return 2;
 }

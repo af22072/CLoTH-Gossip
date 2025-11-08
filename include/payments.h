@@ -58,8 +58,15 @@ struct attempt {
   short is_succeeded;
 };
 
+// struct weighted_ {
+//   double total_weight = 0.0;
+//   double* weights;
+// };
+
 struct payment* new_payment(long id, long sender, long receiver, uint64_t amount, uint64_t start_time, uint64_t max_fee_limit);
-struct array* initialize_payments(struct payments_params pay_params, long n_nodes, gsl_rng* random_generator);
+struct array* initialize_payments(struct payments_params pay_params, struct network_params net_params, struct network *network, long n_nodes, gsl_rng* random_generator);
+void compute_node_weights(struct network *network, long n_nodes, double alpha, double epsilon, double *weights, double *total_weight, unsigned int pattern);
+long weighted_random_select(double* weights, double total_weight, gsl_rng* rng, long n_nodes);
 void add_attempt_history(struct payment* pmt, struct network* network, uint64_t time, short is_succeeded);
 
 #endif
