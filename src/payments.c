@@ -74,7 +74,15 @@ void generate_random_payments(struct payments_params pay_params,struct network_p
     }
     //compute_node_weights(network, n_nodes, 1.0, 1.0, weights, &total_weight, net_params.weighted_random_select);
   }
-
+  //gsl_rng_set(random_generator, 12345);
+  long low_ids[pay_params.n_payments];
+  long high_ids[pay_params.n_payments];
+  for(i=0;i<pay_params.n_payments;i++) {
+    do{
+          low_ids[i] = weighted_random_select(weights[0], total_weight[0], random_generator, n_nodes);
+          high_ids[i] = weighted_random_select(weights[2], total_weight[2], random_generator, n_nodes);
+    } while(low_ids[i]==high_ids[i]);
+  }
   for(i=0;i<pay_params.n_payments;i++) {
     do{
       if (net_params.weighted_random_select != 0) {
@@ -87,12 +95,12 @@ void generate_random_payments(struct payments_params pay_params,struct network_p
           receiver_id = weighted_random_select(weights[2], total_weight[2], random_generator, n_nodes);
         }
         else if (net_params.weighted_random_select == 3)  {
-          sender_id = weighted_random_select(weights[0], total_weight[0], random_generator, n_nodes);
-          receiver_id = weighted_random_select(weights[2], total_weight[2], random_generator, n_nodes);
+          sender_id = low_ids[i];
+          receiver_id = high_ids[i];
         }
         else if (net_params.weighted_random_select == 4)  {
-          sender_id = weighted_random_select(weights[2], total_weight[2], random_generator, n_nodes);
-          receiver_id = weighted_random_select(weights[0], total_weight[0], random_generator, n_nodes);
+          sender_id = high_ids[i];;
+          receiver_id = low_ids[i];;
         }
         //receiver_id = weighted_random_select(weights, total_weight, random_generator, n_nodes);
       }
@@ -125,14 +133,15 @@ void compute_node_weights(struct network *network, long n_nodes, double alpha, d
     for (long i = 0; i < n_nodes; i++) {
         struct node* node = array_get(network->nodes, i);
         node_degrees[i] = array_len(node->open_edges);
+        if (i>=n_nodes-5/*newnode*/)continue;
         switch (pattern) {
-          case 1:// pattern 1: 重みが次数の逆数に比例
+          case 1:// pattern 1: 重みが次数の逆数に比例_low
             weights[i] = 1.0 / pow((double)node_degrees[i] + epsilon, alpha);
             break;
           case 2:// pattern 2: 重みが次数10以下のノードに1.0、その他に0.0を割り当て
             weights[i] = node_degrees[i] <= 10 ? 1.0 : 0.0;
             break;
-          case 3:// pattern 3: 重みが次数に比例
+          case 3:// pattern 3: 重みが次数に比例_high
             weights[i] = pow((double)node_degrees[i] + epsilon, alpha);
             break;
           case 4:// pattern 4: 重みが次数10超のノードに1.0、その他に0.0を割り当て

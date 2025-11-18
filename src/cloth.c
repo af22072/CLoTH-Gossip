@@ -156,7 +156,7 @@ void write_output(struct network* network, struct array* payments, char output_d
     printf("ERROR cannot open payment_output.csv\n");
     exit(-1);
   }
-  fprintf(csv_payment_output, "id,sender_id,receiver_id,amount,start_time,max_fee_limit,end_time,mpp,is_success,no_balance_count,offline_node_count,timeout_exp,attempts,route,total_fee,is_estimate_success\n");//,attempts_history,is_path_changed,jaccard_index,dice_index,lcs_similarity,ld_similarity
+  fprintf(csv_payment_output, "id,sender_id,receiver_id,amount,start_time,max_fee_limit,end_time,mpp,is_success,no_balance_count,offline_node_count,timeout_exp,attempts,route,total_fee,attempts_history,is_estimate_success\n");//,is_path_changed,jaccard_index,dice_index,lcs_similarity,ld_similarity
   for(i=0; i<array_len(payments); i++)  {
     payment = array_get(payments, i);
     if (payment->id == -1) continue;
@@ -176,34 +176,34 @@ void write_output(struct network* network, struct array* payments, char output_d
       fprintf(csv_payment_output, "%ld,",route->total_fee);
     }
     // build attempts history json
-    // if(payment->history != NULL) {
-    //     fprintf(csv_payment_output, "\"[");
-    //     for (struct element *iterator = payment->history; iterator != NULL; iterator = iterator->next) {
-    //         struct attempt *attempt = iterator->data;
-    //         fprintf(csv_payment_output, "{\"\"attempts\"\":%d,\"\"is_succeeded\"\":%d,\"\"end_time\"\":%lu,\"\"error_edge\"\":%lu,\"\"error_type\"\":%d,\"\"route\"\":[", attempt->attempts, attempt->is_succeeded, attempt->end_time, attempt->error_edge_id, attempt->error_type);
-    //         for (j = 0; j < array_len(attempt->route); j++) {
-    //             struct edge_snapshot* edge_snapshot = array_get(attempt->route, j);
-    //             edge = array_get(network->edges, edge_snapshot->id);
-    //             channel = array_get(network->channels, edge->channel_id);
-    //             fprintf(csv_payment_output,"{\"\"edge_id\"\":%lu,\"\"from_node_id\"\":%lu,\"\"to_node_id\"\":%lu,\"\"sent_amt\"\":%lu,\"\"edge_cap\"\":%lu,\"\"channel_cap\"\":%lu,", edge_snapshot->id, edge->from_node_id, edge->to_node_id, edge_snapshot->sent_amt, edge_snapshot->balance, channel->capacity);
-    //             if(edge_snapshot->is_in_group) fprintf(csv_payment_output, "\"\"group_cap\"\":%lu,", edge_snapshot->group_cap);
-    //             else fprintf(csv_payment_output,"\"\"group_cap\"\":null,");
-    //             if(edge_snapshot->does_channel_update_exist) fprintf(csv_payment_output,"\"\"channel_update\"\":%lu}", edge_snapshot->last_channle_update_value);
-    //             else fprintf(csv_payment_output,"\"\"channel_update\"\":}");
-    //             if (j != array_len(attempt->route) - 1) fprintf(csv_payment_output, ",");
-    //         }
-    //         fprintf(csv_payment_output, "]}");
-    //         if (iterator->next != NULL) fprintf(csv_payment_output, ",");
-    //         else fprintf(csv_payment_output, "]");
-    //     }
-    //     fprintf(csv_payment_output, "\"");
-    // }
+    if(payment->history != NULL) {
+        fprintf(csv_payment_output, "\"[");
+        for (struct element *iterator = payment->history; iterator != NULL; iterator = iterator->next) {
+            struct attempt *attempt = iterator->data;
+            fprintf(csv_payment_output, "{\"\"attempts\"\":%d,\"\"is_succeeded\"\":%d,\"\"end_time\"\":%lu,\"\"error_edge\"\":%lu,\"\"error_type\"\":%d,\"\"route\"\":[", attempt->attempts, attempt->is_succeeded, attempt->end_time, attempt->error_edge_id, attempt->error_type);
+            for (j = 0; j < array_len(attempt->route); j++) {
+                struct edge_snapshot* edge_snapshot = array_get(attempt->route, j);
+                edge = array_get(network->edges, edge_snapshot->id);
+                channel = array_get(network->channels, edge->channel_id);
+                fprintf(csv_payment_output,"{\"\"edge_id\"\":%lu,\"\"from_node_id\"\":%lu,\"\"to_node_id\"\":%lu,\"\"sent_amt\"\":%lu,\"\"edge_cap\"\":%lu,\"\"channel_cap\"\":%lu,", edge_snapshot->id, edge->from_node_id, edge->to_node_id, edge_snapshot->sent_amt, edge_snapshot->balance, channel->capacity);
+                if(edge_snapshot->is_in_group) fprintf(csv_payment_output, "\"\"group_cap\"\":%lu,", edge_snapshot->group_cap);
+                else fprintf(csv_payment_output,"\"\"group_cap\"\":null,");
+                if(edge_snapshot->does_channel_update_exist) fprintf(csv_payment_output,"\"\"channel_update\"\":%lu}", edge_snapshot->last_channle_update_value);
+                else fprintf(csv_payment_output,"\"\"channel_update\"\":}");
+                if (j != array_len(attempt->route) - 1) fprintf(csv_payment_output, ",");
+            }
+            fprintf(csv_payment_output, "]}");
+            if (iterator->next != NULL) fprintf(csv_payment_output, ",");
+            else fprintf(csv_payment_output, "]");
+        }
+        fprintf(csv_payment_output, "\"");
+    }
     // fprintf(csv_payment_output, ",%d", payment->is_path_changed);
     // fprintf(csv_payment_output, ",%lf", payment->jaccard_index);
     // fprintf(csv_payment_output, ",%lf", payment->dice_index);
     // fprintf(csv_payment_output, ",%lf", payment->lcs_similarity);
     // fprintf(csv_payment_output, ",%lf", payment->ld_similarity);
-    fprintf(csv_payment_output, "%d", payment->is_estimate_success);
+    fprintf(csv_payment_output, ",%d", payment->is_estimate_success);
 
     fprintf(csv_payment_output, "\n");
   }
